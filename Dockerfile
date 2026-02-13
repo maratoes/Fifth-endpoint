@@ -1,0 +1,19 @@
+FROM runpod/pytorch:2.1.0-py3.10-cuda12.1.0-devel-ubuntu22.04
+
+RUN apt-get update && apt-get install -y git curl wget && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir vllm==0.16.0 runpod==1.6.2 huggingface-hub pydantic pillow requests
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY handler.py .
+COPY config.yaml .
+
+ENV MODEL_NAME="browser-use/bu-30b-a3b-preview"
+ENV MAX_MODEL_LEN=65536
+ENV TENSOR_PARALLEL_SIZE=1
+ENV GPU_MEMORY_UTILIZATION=0.90
+ENV TRUST_REMOTE_CODE=True
+ENV DTYPE="float16"
+
+CMD ["python", "-u", "handler.py"]

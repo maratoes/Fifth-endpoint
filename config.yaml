@@ -1,0 +1,17 @@
+model:
+  name: browser-use/bu-30b-a3b-preview
+  architecture: MoE + VLM
+  vllm_config:
+    max_model_len: 65536
+    gpu_memory_utilization: 0.90
+    tensor_parallel_size: 1
+    trust_remote_code: true
+    dtype: float16
+deployment:
+  gpu: NVIDIA A100 80GB
+  workers_min: 0
+  workers_max: 1
+  idle_timeout_seconds: 120
+  container_disk_gb: 50
+warnings:
+  - Experimental endpoint. MoE on serverless can be unstable.

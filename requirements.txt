@@ -1,0 +1,7 @@
+vllm==0.16.0
+runpod==1.6.2
+huggingface-hub
+pydantic
+pillow
+requests
+pyyaml
