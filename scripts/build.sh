@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-IMAGE_NAME="ghcr.io/aminatorex/fifth-endpoint"
+IMAGE_NAME="docker.io/aminatorex/fifth-endpoint"
 VERSION="v1.0-experimental"
 
 docker build -t "${IMAGE_NAME}:${VERSION}" .
