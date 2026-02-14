@@ -1,4 +1,6 @@
-FROM runpod/pytorch:2.1.0-py3.10-cuda12.1.0-devel-ubuntu22.04
+# NOTE: Keep this tag in sync with what actually exists on Docker Hub.
+# The previously referenced 2.1.0 tag is not published in runpod/pytorch.
+FROM runpod/pytorch:2.2.1-py3.10-cuda12.1.1-devel-ubuntu22.04
 
 RUN apt-get update && apt-get install -y git curl wget && rm -rf /var/lib/apt/lists/*
 
