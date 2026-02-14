@@ -77,6 +77,9 @@ def handler(job: Dict[str, Any]) -> Dict[str, Any]:
             system_prompt = "You are a helpful browser assistant."
 
         image = Image.open(BytesIO(base64.b64decode(image_b64)))
+        # Force full decode early; avoid downstream "broken data stream" errors.
+        image.load()
+        image = image.convert("RGB")
         full_prompt = f"USER: <image>\n{system_prompt}\n{prompt}\nASSISTANT:"
 
         sampling = SamplingParams(
