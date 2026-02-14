@@ -80,7 +80,13 @@ def handler(job: Dict[str, Any]) -> Dict[str, Any]:
         # Force full decode early; avoid downstream "broken data stream" errors.
         image.load()
         image = image.convert("RGB")
-        full_prompt = f"USER: <image>\n{system_prompt}\n{prompt}\nASSISTANT:"
+        image_placeholder = "<|vision_start|><|image_pad|><|vision_end|>"
+        full_prompt = (
+            f"<|im_start|>system\n{system_prompt}<|im_end|>\n"
+            "<|im_start|>user\n"
+            f"Picture 1: {image_placeholder}{prompt}<|im_end|>\n"
+            "<|im_start|>assistant\n"
+        )
 
         sampling = SamplingParams(
             max_tokens=data.get("max_tokens", 512),
