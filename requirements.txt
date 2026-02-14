@@ -1,4 +1,6 @@
-vllm==0.16.0
+# NOTE: GitHub Actions build currently resolves vLLM from PyPI; keep the pinned
+# version to an available distribution.
+vllm==0.15.1
 runpod==1.7.0
 huggingface-hub
 pydantic
