@@ -1,8 +1,11 @@
+import base64
 import logging
 import os
+from io import BytesIO
 from typing import Any, Dict
 
 import runpod
+from PIL import Image
 from vllm import LLM, SamplingParams
 
 logging.basicConfig(level=logging.INFO)
@@ -46,6 +49,7 @@ def initialize_model() -> LLM:
         dtype=os.getenv("DTYPE", "float16"),
         enforce_eager=False,
         enable_prefix_caching=True,
+        limit_mm_per_prompt={"image": 1},
     )
     return model
 
@@ -72,18 +76,8 @@ def handler(job: Dict[str, Any]) -> Dict[str, Any]:
         else:
             system_prompt = "You are a helpful browser assistant."
 
-        # vLLM's chat multimodal expects OpenAI-style "image_url" parts, not PIL.Image.
-        image_url = f"data:image/png;base64,{image_b64}"
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {
-                "role": "user",
-                "content": [
-                    {"type": "image_url", "image_url": {"url": image_url}},
-                    {"type": "text", "text": prompt},
-                ],
-            },
-        ]
+        image = Image.open(BytesIO(base64.b64decode(image_b64)))
+        full_prompt = f"USER: <image>\n{system_prompt}\n{prompt}\nASSISTANT:"
 
         sampling = SamplingParams(
             max_tokens=data.get("max_tokens", 512),
@@ -91,7 +85,10 @@ def handler(job: Dict[str, Any]) -> Dict[str, Any]:
             top_p=data.get("top_p", 0.95),
             stop=["\n\n\n", "<|endoftext|>", "<|im_end|>"],
         )
-        outputs = model.chat(messages, sampling)
+        outputs = model.generate(
+            [{"prompt": full_prompt, "multi_modal_data": {"image": image}}],
+            sampling,
+        )
         result = outputs[0].outputs[0].text
         return {
             "output": result,
