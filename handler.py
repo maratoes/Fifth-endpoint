@@ -1,11 +1,8 @@
-import base64
 import logging
 import os
-from io import BytesIO
 from typing import Any, Dict
 
 import runpod
-from PIL import Image
 from vllm import LLM, SamplingParams
 
 logging.basicConfig(level=logging.INFO)
@@ -68,8 +65,6 @@ def handler(job: Dict[str, Any]) -> Dict[str, Any]:
         if not image_b64:
             return {"error": "image is required", "status": "error"}
 
-        image = Image.open(BytesIO(base64.b64decode(image_b64)))
-
         if task_type == "dom_analysis":
             system_prompt = "You are a browser automation expert. Analyze page structure and identify interactive elements."
         elif task_type == "browser_action":
@@ -77,12 +72,14 @@ def handler(job: Dict[str, Any]) -> Dict[str, Any]:
         else:
             system_prompt = "You are a helpful browser assistant."
 
+        # vLLM's chat multimodal expects OpenAI-style "image_url" parts, not PIL.Image.
+        image_url = f"data:image/png;base64,{image_b64}"
         messages = [
             {"role": "system", "content": system_prompt},
             {
                 "role": "user",
                 "content": [
-                    {"type": "image", "image": image},
+                    {"type": "image_url", "image_url": {"url": image_url}},
                     {"type": "text", "text": prompt},
                 ],
             },
