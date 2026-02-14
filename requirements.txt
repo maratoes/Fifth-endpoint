@@ -1,5 +1,5 @@
 vllm==0.15.1
-runpod==1.6.2
+runpod==1.7.0
 huggingface-hub
 pydantic
 pillow
