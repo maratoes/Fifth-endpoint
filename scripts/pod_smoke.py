@@ -8,6 +8,7 @@ import os
 import sys
 import time
 import traceback
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -74,6 +75,33 @@ def _write_result(path: str, data: dict[str, Any]) -> None:
     os.replace(tmp, path)
 
 
+def _heartbeat_path(result_path: str) -> str:
+    explicit = os.getenv("SMOKE_HEARTBEAT_PATH", "").strip()
+    if explicit:
+        return explicit
+    if not result_path:
+        return ""
+    if result_path.endswith(".json"):
+        return result_path[:-5] + ".heartbeat.json"
+    return result_path + ".heartbeat.json"
+
+
+def _start_heartbeat_writer(path: str, state: dict[str, Any]) -> threading.Event | None:
+    if not path:
+        return None
+    stop = threading.Event()
+
+    def _loop() -> None:
+        while not stop.is_set():
+            payload = dict(state)
+            payload["heartbeat_at_unix"] = time.time()
+            _write_result(path, payload)
+            stop.wait(30.0)
+
+    threading.Thread(target=_loop, name="smoke-heartbeat", daemon=True).start()
+    return stop
+
+
 def _maybe_prefetch(model_name: str) -> None:
     try:
         from huggingface_hub import snapshot_download  # type: ignore
@@ -96,6 +124,7 @@ def main() -> int:
     model_name = os.getenv("MODEL_NAME", "browser-use/bu-30b-a3b-preview")
     caches = _configure_cache_dirs()
     result_path = _default_result_path(model_name)
+    hb_path = _heartbeat_path(result_path)
 
     started = time.time()
     result: dict[str, Any] = {
@@ -104,14 +133,24 @@ def main() -> int:
         "started_at_unix": started,
         "caches": caches,
         "result_path": result_path,
+        "heartbeat_path": hb_path,
     }
+    stage: dict[str, Any] = {
+        "status": "running",
+        "stage": "start",
+        "model_name": model_name,
+        "started_at_unix": started,
+    }
+    hb_stop = _start_heartbeat_writer(hb_path, stage)
 
     try:
+        stage["stage"] = "prefetch"
         _maybe_prefetch(model_name)
 
         import handler as h
 
         print("[pod_smoke] initializing model...", flush=True)
+        stage["stage"] = "init_model"
         t0 = time.time()
         h.initialize_model()
         print(f"[pod_smoke] model initialized in {time.time()-t0:.1f}s", flush=True)
@@ -130,6 +169,7 @@ def main() -> int:
             }
         }
         print("[pod_smoke] running inference...", flush=True)
+        stage["stage"] = "inference"
         out = h.handler(payload)
         print("[pod_smoke] output:", out, flush=True)
 
@@ -144,6 +184,8 @@ def main() -> int:
         print("[pod_smoke] ERROR:", str(exc), flush=True)
         return 2
     finally:
+        if hb_stop:
+            hb_stop.set()
         result["finished_at_unix"] = time.time()
         result["duration_s"] = round(result["finished_at_unix"] - started, 3)
         _write_result(result_path, result)
