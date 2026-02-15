@@ -40,6 +40,8 @@ def initialize_model() -> LLM:
     if model is not None:
         return model
     _configure_cache_dirs()
+    enforce_eager = os.getenv("ENFORCE_EAGER", "1").strip().lower() in {"1", "true", "yes", "y"}
+    enable_prefix_caching = os.getenv("ENABLE_PREFIX_CACHING", "0").strip().lower() in {"1", "true", "yes", "y"}
     model = LLM(
         model=os.getenv("MODEL_NAME", "browser-use/bu-30b-a3b-preview"),
         trust_remote_code=True,
@@ -47,8 +49,8 @@ def initialize_model() -> LLM:
         tensor_parallel_size=int(os.getenv("TENSOR_PARALLEL_SIZE", "1")),
         gpu_memory_utilization=float(os.getenv("GPU_MEMORY_UTILIZATION", "0.90")),
         dtype=os.getenv("DTYPE", "float16"),
-        enforce_eager=False,
-        enable_prefix_caching=True,
+        enforce_eager=enforce_eager,
+        enable_prefix_caching=enable_prefix_caching,
         limit_mm_per_prompt={"image": 1},
     )
     return model
